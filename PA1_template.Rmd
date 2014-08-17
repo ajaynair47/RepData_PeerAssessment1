@@ -1,20 +1,198 @@
 # Reproducible Research: Peer Assessment 1
+=============================================================================
 
+It is now possible to collect a large amount of data about personal
+movement using activity monitoring devices such as a
+[Fitbit](http://www.fitbit.com), [Nike
+Fuelband](http://www.nike.com/us/en_us/c/nikeplus-fuelband), or
+[Jawbone Up](https://jawbone.com/up). These type of devices are part of
+the "quantified self" movement -- a group of enthusiasts who take
+measurements about themselves regularly to improve their health, to
+find patterns in their behavior, or because they are tech geeks. But
+these data remain under-utilized both because the raw data are hard to
+obtain and there is a lack of statistical methods and software for
+processing and interpreting the data.
+
+This assignment makes use of data from a personal activity monitoring
+device. This device collects data at 5 minute intervals through out the
+day. The data consists of two months of data from an anonymous
+individual collected during the months of October and November, 2012
+and include the number of steps taken in 5 minute intervals each day.
+
+## Data
+
+The data for this assignment can be downloaded from the course web
+site:
+
+* Dataset: [Activity monitoring data](https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip) [52K]
+
+The variables included in this dataset are:
+
+* **steps**: Number of steps taking in a 5-minute interval (missing
+    values are coded as `NA`)
+
+* **date**: The date on which the measurement was taken in YYYY-MM-DD
+    format
+
+* **interval**: Identifier for the 5-minute interval in which
+    measurement was taken
+
+
+The dataset is stored in a comma-separated-value (CSV) file and there
+are a total of 17,568 observations in this
+dataset.
 
 ## Loading and preprocessing the data
 
+```{r}
 
+dfActivity <- read.csv("activity.csv") 
+str(dfActivity)
+summary(dfActivity$steps)
+
+```
 
 ## What is mean total number of steps taken per day?
 
+We will ignore the missing values in the dataset for now.
+
+See below for a histogram of the total number of steps taken each day and a  
+sumary of daily statistics including mean and median.
+
+```{r}
+
+library(plyr)
+par(mfrow = c(1,1))
+dfDailySummary <- ddply(dfActivity, c("date"), summarize, Steps = sum(steps))
+barplot(dfDailySummary$Steps, names.arg = dfDailySummary$date, col = "wheat", xlab="Date", ylab = "Total Steps", main = "Total Steps per Day")
+
+mean(dfDailySummary$Steps, na.rm=TRUE)
+median(dfDailySummary$Steps, na.rm=TRUE)
+
+```
 
 
 ## What is the average daily activity pattern?
 
+See below for a time series plot of the 5-minute interval and the average number of steps taken, averaged across all days.
 
+```{r}
+
+dfIntervalSummary <- ddply(dfActivity, c("interval"), summarize, Steps = mean(steps, na.rm = TRUE))
+plot(dfIntervalSummary$interval,dfIntervalSummary$Steps, type="l",xlab="Interval", ylab="Average Steps", main="Average steps by interval")
+
+```
+
+The 5-minute interval, on average across all the days in the dataset, that contains the maximum number of steps is around 835AM as shown below.
+
+```{r}
+
+with(dfIntervalSummary, interval[Steps == max(Steps)])
+
+```
 
 ## Imputing missing values
 
+The total number of missing values in the dataset is as follows.
+
+```{r}
+
+sum(is.na(dfActivity$steps))
+
+```
+
+Our strategy to fill in all of the missing values in the dataset would be to use the mean for that 5-minute interval across all days.
+
+```{r}
+
+dfActivityWithoutNA <- dfActivity
+for (i in 1:nrow(dfActivityWithoutNA))
+{
+
+  if (is.na(dfActivityWithoutNA[i,"steps"]))
+  {
+     dfActivityWithoutNA[i,"steps"] <- 
+           dfIntervalSummary$Steps[dfIntervalSummary$interval == 
+                                           dfActivityWithoutNA[i,"interval"]]
+  }
+}
+
+## Check for NAs
+sum(is.na(dfActivityWithoutNA$steps))
+
+```
+
+
+See below for a histogram of the total number of steps taken each day and the **mean** and **median** total number of steps taken per day with the new dataset that has the missing values substituted by the mean value of the interval across the days. 
+
+```{r}
+
+dfDailySummaryWithoutNA <- ddply(dfActivityWithoutNA, c("date"), summarize, 
+                                 Steps = sum(steps))
+barplot(dfDailySummaryWithoutNA$Steps, names.arg = dfDailySummaryWithoutNA$date, col = "wheat", xlab="Date", ylab = "Total Steps", main = "Total Steps per Day without Missing Values")
+
+mean(dfDailySummaryWithoutNA$Steps, na.rm=T)
+median(dfDailySummaryWithoutNA$Steps, na.rm=T)
+
+```
+
+
+TO compare the statistics on the two datasets, they are plotted side by side below. The means, medians and standard deviations are also listed below. The impact of imputing missing data has been to the median and the standard deviation. The mean and median are the equal in the new data set and there is less spread in the data in the new dataset compared to the previous one.
+
+```{r}
+
+par(mfrow = c(1,2))
+
+barplot(dfDailySummary$Steps, names.arg = dfDailySummary$date, col = "wheat", xlab="Date", ylab = "Total Steps", main = "Total Steps per Day")
+barplot(dfDailySummaryWithoutNA$Steps, names.arg = dfDailySummaryWithoutNA$date, col = "wheat", xlab="Date", ylab = "Total Steps", main = "Without Missing Values")
+
+mean(dfDailySummary$Steps, na.rm=TRUE)
+mean(dfDailySummaryWithoutNA$Steps, na.rm=TRUE)
+median(dfDailySummary$Steps, na.rm=TRUE)
+median(dfDailySummaryWithoutNA$Steps, na.rm=TRUE)
+sd(dfDailySummary$Steps, na.rm=TRUE)
+sd(dfDailySummaryWithoutNA$Steps, na.rm=TRUE)
+
+```
 
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+A new column called "Weekdays" has been added to the dataset that is either "weekday" or "weekend" depending on the day in the date column for that row.
+This will be used to compare activity between weekdays and weekends.
+The code below plots the average activity across all days per interval for weekdays and weekends side by side with the same range for easier comparison.
+On weekends, we see higher activity both in terms of mean and median. The peak activity seen in the morning during weekdays is lower during weekends. 
+
+
+```{r}
+
+Weekday <- character(nrow(dfActivityWithoutNA))
+for (i in 1:nrow(dfActivityWithoutNA))
+{
+        x <- weekdays(as.Date(as.character(dfActivityWithoutNA[i,"date"]), 
+                              "%Y-%m-%d"), abbreviate=FALSE)
+        if (x == "Saturday" | x == "Sunday")
+                x <- "Weekend"
+        else
+                x <- "Weekday"
+        Weekday[i] <- x
+}
+dfActivityWithoutNA <- cbind(dfActivityWithoutNA, Weekday)
+dfIntervalSummaryWeekday <- ddply(subset(dfActivityWithoutNA, 
+                                Weekday=="Weekday"), c("interval"), 
+                                summarize, Steps = mean(steps, na.rm = TRUE))
+dfIntervalSummaryWeekend <- ddply(subset(dfActivityWithoutNA, 
+                                Weekday=="Weekend"), c("interval"), 
+                                summarize, Steps = mean(steps, na.rm = TRUE))
+rng <- range(dfIntervalSummaryWeekday$Steps, dfIntervalSummaryWeekend$Steps, na.rm=T)
+par(mfrow = c(1,2))
+plot(dfIntervalSummaryWeekday$interval,dfIntervalSummaryWeekday$Steps, type="l",ylim=rng, xlab="Interval", ylab = "Average Steps", main="Weekdays")
+abline(h=mean(dfIntervalSummaryWeekday$Steps,na.rm=T), col="red")
+abline(h=median(dfIntervalSummaryWeekday$Steps,na.rm=T), col="blue")
+plot(dfIntervalSummaryWeekend$interval,dfIntervalSummaryWeekend$Steps, type="l",ylim=rng, xlab="Interval", ylab = "Average Steps", main="Weekends")
+abline(h=mean(dfIntervalSummaryWeekend$Steps,na.rm=T), col="red")
+abline(h=median(dfIntervalSummaryWeekend$Steps,na.rm=T), col="blue")
+
+
+```
+
