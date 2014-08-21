@@ -1,0 +1,14 @@
+Hello
+
+Apparently Rvstudio deletes the .md file by default. So you will only see the .rmd and .html file in my commit.
+
+To evaluate my assignment, please review the .html file by prefixing http://htmlpreview.github.io/?
+
+So the complete url will be 
+http://htmlpreview.github.io/?https://github.com/ajaynair47/RepData_PeerAssessment1/blob/e94f7c4e39b46c9713880faf83fce2f287348cce/PA1_template.html
+
+The following blogs have some comments from the course TAs on this topic:
+https://class.coursera.org/repdata-005/forum/thread?thread_id=133#comment-260
+https://class.coursera.org/repdata-005/forum/thread?thread_id=160
+
+thanks!
